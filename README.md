@@ -16,13 +16,15 @@ The grammar targets Frankie v1.22 syntax.
 - P0 scaffold: complete (config, tests wiring, corpus)
 - P1 grammar: **complete** — all 46 files in `examples/` (harvested from
   upstream `atejada/Frankie`) parse with zero `ERROR`/`MISSING` nodes, and
-  the 28 unit tests in `test/corpus/` pass
+  the 29 unit tests in `test/corpus/` pass
 - P2 queries: **complete** — `queries/highlights.scm` and
   `queries/indents.scm`
 - P3 editor integration: query files are drop-in ready; see below
 - P4 structural queries: **complete** — `queries/locals.scm` (scopes,
   definitions, references) and `queries/textobjects.scm` (Neovim + Helix
   text objects)
+- Heredoc interpolation: **complete** — `#{expr}` inside a `<<~DELIM` body
+  parses as `(interpolation)`, verified against the reference compiler
 
 ## Development
 
@@ -41,7 +43,9 @@ A custom scanner (`src/scanner.c`) handles constructs that cannot be
 expressed with context-free rules alone:
 
 - interpolated strings (`"#{expr}"`, single/triple-quoted variants)
-- heredocs (`<<~DELIM ... DELIM`); heredoc bodies are opaque line tokens
+- heredocs (`<<~DELIM ... DELIM`), including `#{expr}` interpolation inside
+  the body — the scanner splits a body line at each `#{` so the expression
+  parses as a normal `(interpolation)` node
 
 The grammar declares GLR conflicts for the statement-level ambiguities
 (destructuring vs. comma lists, command vs. paren call, postfix control).
@@ -92,9 +96,9 @@ on open.
 
 ## Known limitations
 
-- Interpolation inside heredoc bodies is not tokenized (bodies are opaque)
-- Brace blocks with parameters (`.each { |x| ... }`) are not in the grammar;
-  use the `do … end` form (the upstream examples only use `do`)
+- Brace blocks (`.each { ... }`) are not in the grammar: the reference
+  compiler rejects them, with or without `|x|`, so this matches the
+  language rather than deviating from it. Use the `do … end` form
 - Identifier-argument postfix chains in keyword commands attach outside the
   command node (`puts a.b` → `(call puts a)` + `(dot_call b)`); tokens and
   highlight captures are unaffected

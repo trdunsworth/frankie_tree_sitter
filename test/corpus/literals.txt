@@ -153,7 +153,7 @@ puts msg
       (identifier))))
 
 ================================================================================
-heredoc body may contain anything, including #{ } and commas
+heredoc body is literal except #{ } interpolation
 ================================================================================
 sql = <<~SQL
   SELECT a, b FROM t -- not a comment
@@ -168,5 +168,36 @@ SQL
       (heredoc
         (heredoc_start)
         (heredoc_body)
+        (heredoc_body)
+        (interpolation
+          (identifier))
+        (heredoc_body)
+        (heredoc_end)))))
+
+================================================================================
+heredoc interpolation splits lines without confusing the closer
+================================================================================
+a = <<~MSG
+  lead #{x} and #{x}
+  text #{x} MSG
+MSG
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (heredoc
+        (heredoc_start)
+        (heredoc_body)
+        (interpolation
+          (identifier))
+        (heredoc_body)
+        (interpolation
+          (identifier))
+        (heredoc_body)
+        (heredoc_body)
+        (interpolation
+          (identifier))
         (heredoc_body)
         (heredoc_end)))))

@@ -121,14 +121,15 @@ export default grammar({
     heredoc_end: $ => $._heredoc_end,
 
     // A heredoc literal is one complete expression: the `<<~NAME` marker,
-    // the newline that ends the marker line, the body lines (each token
-    // includes its own trailing newline), and the closer line — which
-    // deliberately EXCLUDES its trailing newline so that newline remains
-    // available as the statement separator for what follows.
+    // the newline that ends the marker line, the body (each `_heredoc_body`
+    // token includes its trailing newline; the scanner splits a line at
+    // `#{` so an interpolation can appear anywhere within it), and the
+    // closer line — which deliberately EXCLUDES its trailing newline so that
+    // newline remains available as the statement separator for what follows.
     heredoc: $ => seq(
       $.heredoc_start,
       $._newline,
-      repeat($.heredoc_body),
+      repeat(choice($.heredoc_body, $.interpolation)),
       $.heredoc_end,
     ),
 

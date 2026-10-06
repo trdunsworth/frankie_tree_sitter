@@ -26,6 +26,10 @@ typedef struct {
 
 typedef struct {
   String delim;
+  // True when the next byte to scan begins a line.  A line that has already
+  // produced an interpolation is mid-line and must never be re-tested
+  // against the delimiter — see scan_heredoc_line.
+  bool at_line_start;
 } Heredoc;
 
 typedef struct {
@@ -71,7 +75,7 @@ static inline unsigned serialize(Scanner *scanner, char *buffer) {
   buffer[size++] = (char)scanner->heredocs.size;
   for (uint32_t i = 0; i < scanner->heredocs.size; i++) {
     Heredoc *heredoc = array_get(&scanner->heredocs, i);
-    if (size + sizeof(uint32_t) + heredoc->delim.size >
+    if (size + sizeof(uint32_t) + heredoc->delim.size + 1 >
         TREE_SITTER_SERIALIZATION_BUFFER_SIZE) {
       return 0;
     }
@@ -79,6 +83,7 @@ static inline unsigned serialize(Scanner *scanner, char *buffer) {
     size += sizeof(uint32_t);
     memcpy(&buffer[size], heredoc->delim.contents, heredoc->delim.size);
     size += heredoc->delim.size;
+    buffer[size++] = (char)heredoc->at_line_start;
   }
 
   return size;
@@ -111,6 +116,7 @@ static inline void deserialize(Scanner *scanner, const char *buffer,
     memcpy(heredoc.delim.contents, &buffer[size], word_length);
     heredoc.delim.size = word_length;
     size += word_length;
+    heredoc.at_line_start = (size < length) ? (buffer[size++] != 0) : false;
     array_push(&scanner->heredocs, heredoc);
   }
 }
@@ -210,11 +216,27 @@ static bool scan_string(Scanner *scanner, TSLexer *lexer,
   }
 }
 
-// Consume exactly one heredoc line.  A line whose trimmed content equals
-// the delimiter ends the heredoc: emit `_heredoc_end`, ending the token
-// BEFORE the newline so that newline stays available as the statement
-// separator, and pop the queue.  Any other line is emitted whole (including
-// its trailing newline) as `_heredoc_body`.
+// Consume one heredoc line — or, when a `#{` interpolation splits it, the
+// run of content before that marker.
+//
+// A line whose trimmed content equals the delimiter ends the heredoc: emit
+// `_heredoc_end`, ending the token BEFORE the newline so that newline stays
+// available as the statement separator, and pop the queue.  Any other line
+// is emitted whole (including its trailing newline) as `_heredoc_body`.
+//
+// `#{` splits the line: the content before it goes out as `_heredoc_body`
+// (or is skipped when the marker leads the line) and `_interp_start` is
+// emitted so the grammar can parse the expression; scanning then resumes
+// after that expression's `}`.  The reference lexer offers no escape here —
+// in a heredoc `\#{x}` interpolates and keeps the backslash as literal text
+// — so `\` needs no special handling.  A `#` not followed by `{` is ordinary
+// content.
+//
+// A line that has produced an interpolation is known to be a body line: a
+// delimiter is an identifier and can never contain `#{`.  Clearing
+// `at_line_start` on the way out means the resumed scan skips the
+// delimiter test, which would otherwise read the tail of
+// `  text #{x} MSG` as the closer.
 static bool scan_heredoc_line(Scanner *scanner, TSLexer *lexer,
                               const bool *valid_symbols) {
   Heredoc *heredoc = array_front(&scanner->heredocs);
@@ -222,14 +244,16 @@ static bool scan_heredoc_line(Scanner *scanner, TSLexer *lexer,
   uint32_t delim_len = heredoc->delim.size;
 
   // 0: leading whitespace, 1: matching delimiter, 2: trailing whitespace,
-  // 3: line can no longer match
+  // 3: line can no longer match.  A resumed mid-line scan starts in 3.
+  bool line_start = heredoc->at_line_start;
   uint32_t matched = 0;
-  unsigned phase = 0;
+  unsigned phase = line_start ? 0 : 3;
   bool consumed = false;
 
   for (;;) {
     if (lexer->eof(lexer)) {
-      bool closes = (phase == 1 && matched == delim_len) || phase == 2;
+      bool closes = line_start &&
+                    ((phase == 1 && matched == delim_len) || phase == 2);
       if (closes && consumed && valid_symbols[HEREDOC_END]) {
         lexer->mark_end(lexer);
         array_delete(&heredoc->delim);
@@ -246,8 +270,33 @@ static bool scan_heredoc_line(Scanner *scanner, TSLexer *lexer,
     }
 
     int32_t c = lexer->lookahead;
+
+    if (c == '#' && valid_symbols[INTERP_START]) {
+      lexer->mark_end(lexer);  // body content ends before '#'
+      advance(lexer);
+      if (!lexer->eof(lexer) && lexer->lookahead == '{') {
+        if (consumed) {
+          if (!valid_symbols[HEREDOC_BODY]) return false;
+          lexer->result_symbol = HEREDOC_BODY;
+          heredoc->at_line_start = false;
+          return true;
+        }
+        advance(lexer);  // consume '{'
+        lexer->mark_end(lexer);
+        heredoc->at_line_start = false;
+        lexer->result_symbol = INTERP_START;
+        return true;
+      }
+      // '#' not opening an interpolation: literal content.  '#' can never
+      // appear in a delimiter, so it also ends any match in progress.
+      phase = 3;
+      consumed = true;
+      continue;
+    }
+
     if (c == '\n') {
-      bool closes = (phase == 1 && matched == delim_len) || phase == 2;
+      bool closes = line_start &&
+                    ((phase == 1 && matched == delim_len) || phase == 2);
       if (closes && valid_symbols[HEREDOC_END]) {
         // Stop before the newline: it terminates the statement that
         // carried the `<<~NAME` marker's body.
@@ -260,8 +309,10 @@ static bool scan_heredoc_line(Scanner *scanner, TSLexer *lexer,
       advance(lexer);
       lexer->mark_end(lexer);
       consumed = true;
+      heredoc->at_line_start = true;
       break;
     }
+
     if (phase == 0) {
       if (is_space(c)) {
         advance(lexer);
@@ -316,6 +367,7 @@ static bool scan_heredoc_start(Scanner *scanner, TSLexer *lexer) {
 
   Heredoc heredoc = {0};
   heredoc.delim = (String)array_new();
+  heredoc.at_line_start = true;
   while (!lexer->eof(lexer) && is_delim_char(lexer->lookahead)) {
     array_push(&heredoc.delim, (char)lexer->lookahead);
     advance(lexer);

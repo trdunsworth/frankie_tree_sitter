@@ -1089,6 +1089,10 @@
         {
           "type": "heredoc_start",
           "named": true
+        },
+        {
+          "type": "interpolation",
+          "named": true
         }
       ]
     }
