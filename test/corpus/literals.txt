@@ -1,0 +1,172 @@
+================================================================================
+numbers, booleans, nil
+================================================================================
+x = 1
+y = 2.5
+z = true
+w = false
+v = nil
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (number))
+    (assignment
+      (identifier)
+      (number))
+    (assignment
+      (identifier))
+    (assignment
+      (identifier))
+    (assignment
+      (identifier))))
+
+================================================================================
+strings: plain, interpolation, single-quoted, escapes
+================================================================================
+a = "hi"
+b = "hey #{name}!"
+c = 'raw #{nope}'
+d = "quote \" and backslash \\"
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (string))
+    (assignment
+      (identifier)
+      (string
+        (interpolation
+          (identifier))))
+    (assignment
+      (identifier)
+      (string))
+    (assignment
+      (identifier)
+      (string))))
+
+================================================================================
+triple-quoted multi-line string
+================================================================================
+s = """
+line one
+line two
+"""
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (string))))
+
+================================================================================
+vector and hash literals
+================================================================================
+v = [1, 2, 3]
+h = {a: 1, "b": 2}
+e = []
+empty = {}
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (vector
+        (number)
+        (number)
+        (number)))
+    (assignment
+      (identifier)
+      (hash
+        (identifier)
+        (number)
+        (string)
+        (number)))
+    (assignment
+      (identifier)
+      (vector))
+    (assignment
+      (identifier)
+      (hash))))
+
+================================================================================
+symbols and comments
+================================================================================
+:sym
+# a comment
+x = :other # trailing
+---
+
+(source_file
+  (statements
+    (symbol)
+    (comment)
+    (assignment
+      (identifier)
+      (symbol)))
+  (comment))
+
+================================================================================
+ranges
+================================================================================
+r = 1..5
+s = 0...10
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (number)
+      (number))
+    (assignment
+      (identifier)
+      (number)
+      (number))))
+
+================================================================================
+heredoc literal as assignment RHS
+================================================================================
+msg = <<~TXT
+  Hello, world!
+  line two
+TXT
+puts msg
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (heredoc
+        (heredoc_start)
+        (heredoc_body)
+        (heredoc_body)
+        (heredoc_end)))
+    (call
+      (identifier))))
+
+================================================================================
+heredoc body may contain anything, including #{ } and commas
+================================================================================
+sql = <<~SQL
+  SELECT a, b FROM t -- not a comment
+  WHERE name = '#{user}'
+SQL
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (heredoc
+        (heredoc_start)
+        (heredoc_body)
+        (heredoc_body)
+        (heredoc_end)))))

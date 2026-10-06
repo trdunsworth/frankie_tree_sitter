@@ -1,0 +1,67 @@
+import "lib/math" as m
+
+const MAX = 100
+
+record Point(x, y)
+
+def clamp(v: Int, lo: Int = 0, hi: Int) -> Int
+  return lo if v < lo
+  hi
+end
+
+def greet(name, greeting: String = "hi")
+  puts greeting, name
+end
+
+items = [1, 2, 3]
+total = 0
+
+items.each do |item, idx|
+  total += item
+end
+
+fn = ->(a, b) { a + b }
+
+if total > MAX
+  puts "big"
+elsif total > 0
+  puts "small"
+else
+  puts "neg"
+end
+
+unless ready
+  wait()
+end
+
+while total < 10
+  total += 1
+end
+
+for i in 1..10
+  p i
+end
+
+case total
+when 1, 2
+  puts "low"
+when 3..9
+  puts "mid"
+else
+  puts "high"
+end
+
+begin
+  risky()
+rescue TimeoutError => e
+  puts e
+ensure
+  cleanup()
+end
+
+loop do
+  break
+end
+
+x = total > 5 ? total : 0
+y = m.clamp(x, 0, MAX)

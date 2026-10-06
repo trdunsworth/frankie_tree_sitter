@@ -1,0 +1,245 @@
+================================================================================
+paren call with positional and named arguments
+================================================================================
+f(a, 1, key: "v")
+g()
+---
+
+(source_file
+  (statements
+    (call
+      (identifier)
+      (identifier)
+      (number)
+      (identifier)
+      (string))
+    (call
+      (identifier))))
+
+================================================================================
+keyword commands
+================================================================================
+puts "hello"
+print "no newline"
+raise TimeoutError, "boom"
+require "lib/math"
+---
+
+(source_file
+  (statements
+    (call
+      (string))
+    (call
+      (string))
+    (call
+      (identifier)
+      (string))
+    (call
+      (string))))
+
+================================================================================
+dot chains, index, safe navigation
+================================================================================
+a.b.c[0].d = 1
+x = user&.profile&.name
+v = matrix[1][2]
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (dot_call
+        (identifier))
+      (dot_call
+        (identifier))
+      (number)
+      (dot_call
+        (identifier))
+      (number))
+    (assignment
+      (identifier)
+      (identifier)
+      (safe_call
+        (identifier))
+      (safe_call
+        (identifier)))
+    (assignment
+      (identifier)
+      (identifier)
+      (number)
+      (number))))
+
+================================================================================
+method call and lambda call
+================================================================================
+s = "abc".upcase()
+t = items.map(->(x) { x * 2 })
+f = ->(x) { x + 1 }
+puts f.(42)
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (string)
+      (dot_call
+        (identifier)))
+    (assignment
+      (identifier)
+      (identifier)
+      (dot_call
+        (identifier)
+        (lambda
+          (identifier)
+          (statements
+            (identifier)
+            (number)))))
+    (assignment
+      (identifier)
+      (lambda
+        (identifier)
+        (statements
+          (identifier)
+          (number))))
+    (call
+      (identifier))
+    (dot_call
+      (number))))
+
+================================================================================
+pipe operator
+================================================================================
+out = data |> transform |> render
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (identifier))
+    (identifier)
+    (identifier)))
+
+================================================================================
+do-block after calls
+================================================================================
+items.each do |i|
+  p i
+end
+rows = db.query("select 1").map do |row|
+  row.to_h
+end
+---
+
+(source_file
+  (statements
+    (identifier)
+    (dot_call
+      (identifier))
+    (do_block
+      (identifier)
+      (statements
+        (call
+          (identifier)
+          (identifier))))
+    (assignment
+      (identifier)
+      (identifier)
+      (dot_call
+        (identifier)
+        (string))
+      (dot_call
+        (identifier))
+      (do_block
+        (identifier)
+        (statements
+          (identifier)
+          (dot_call
+            (identifier)))))))
+
+================================================================================
+boolean operators and ternary
+================================================================================
+r = a && b || c
+t = ready ? "go" : "stop"
+u = not ready
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (identifier)
+      (identifier)
+      (identifier))
+    (assignment
+      (identifier)
+      (identifier)
+      (string)
+      (string))
+    (assignment
+      (identifier)
+      (identifier))))
+
+================================================================================
+await and postfix-condition commands
+================================================================================
+data = await fetch(url)
+puts result if verbose
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (call
+        (identifier)
+        (identifier)))
+    (call
+      (identifier))
+    (identifier)))
+
+================================================================================
+command with identifier argument and trailing comma list
+================================================================================
+puts a, b
+f(x, y, z)
+---
+
+(source_file
+  (statements
+    (call
+      (identifier)
+      (identifier))
+    (call
+      (identifier)
+      (identifier)
+      (identifier)
+      (identifier))))
+
+================================================================================
+chained calls with blocks
+================================================================================
+rows = db.query("select 1").map do |row|
+  row.to_h
+end
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (identifier)
+      (dot_call
+        (identifier)
+        (string))
+      (dot_call
+        (identifier))
+      (do_block
+        (identifier)
+        (statements
+          (identifier)
+          (dot_call
+            (identifier)))))))

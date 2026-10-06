@@ -1,0 +1,304 @@
+================================================================================
+compound assignment and assignment ops
+================================================================================
+x = 1
+x += 1
+x -= 2
+x *= 3
+x //= 2
+x ||= 3
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (number))
+    (assignment
+      (identifier)
+      (number))
+    (assignment
+      (identifier)
+      (number))
+    (assignment
+      (identifier)
+      (number))
+    (assignment
+      (identifier)
+      (number))
+    (assignment
+      (identifier)
+      (number))))
+
+================================================================================
+destructuring with splat
+================================================================================
+a, b, *rest = [1, 2, 3, 4]
+first, *mid, last = ["a", "b", "c"]
+lo, hi = minmax(data)
+---
+
+(source_file
+  (statements
+    (destructuring_assignment
+      (identifier)
+      (identifier)
+      (identifier)
+      (vector
+        (number)
+        (number)
+        (number)
+        (number)))
+    (destructuring_assignment
+      (identifier)
+      (identifier)
+      (identifier)
+      (vector
+        (string)
+        (string)
+        (string)))
+    (destructuring_assignment
+      (identifier)
+      (identifier)
+      (call
+        (identifier)
+        (identifier)))))
+
+================================================================================
+hash destructuring
+================================================================================
+{name, age} = person
+---
+
+(source_file
+  (statements
+    (hash_destructuring_assignment
+      (identifier)
+      (identifier)
+      (identifier))))
+
+================================================================================
+if / elsif / else with then
+================================================================================
+if x > 1 then
+  puts "big"
+elsif x > 0
+  puts "small"
+else
+  puts "neg"
+end
+---
+
+(source_file
+  (statements
+    (if_statement
+      (identifier)
+      (number)
+      (statements
+        (call
+          (string)))
+      (elsif_clause
+        (identifier)
+        (number)
+        (statements
+          (call
+            (string))))
+      (else_clause
+        (statements
+          (call
+            (string)))))))
+
+================================================================================
+unless / postfix control
+================================================================================
+unless ready
+  wait()
+end
+puts "done" unless pending
+return 1 if guard
+next if skip
+break if done
+---
+
+(source_file
+  (statements
+    (unless_statement
+      (identifier)
+      (statements
+        (call
+          (identifier))))
+    (call
+      (string))
+    (identifier)
+    (return_statement
+      (number))
+    (identifier)
+    (next_statement)
+    (identifier)
+    (break_statement)
+    (identifier)))
+
+================================================================================
+while, until, for, loop
+================================================================================
+while i < 10
+  i += 1
+end
+until done
+  tick()
+end
+for i in 1..10
+  p i
+end
+loop do
+  break
+end
+---
+
+(source_file
+  (statements
+    (while_statement
+      (identifier)
+      (number)
+      (statements
+        (assignment
+          (identifier)
+          (number))))
+    (until_statement
+      (identifier)
+      (statements
+        (call
+          (identifier))))
+    (for_statement
+      (identifier)
+      (number)
+      (number)
+      (statements
+        (call
+          (identifier)
+          (identifier))))
+    (loop_statement
+      (statements
+        (break_statement)))))
+
+================================================================================
+case / when with ranges and hashes
+================================================================================
+case grade
+when "A", "B"
+  puts "pass"
+when 3..9
+  puts "range"
+when {active: true}
+  puts "active"
+else
+  puts "other"
+end
+---
+
+(source_file
+  (statements
+    (case_statement
+      (identifier)
+      (when_clause
+        (string)
+        (string)
+        (statements
+          (call
+            (string))))
+      (when_clause
+        (number)
+        (number)
+        (statements
+          (call
+            (string))))
+      (when_clause
+        (hash
+          (identifier))
+        (statements
+          (call
+            (string))))
+      (else_clause
+        (statements
+          (call
+            (string)))))))
+
+================================================================================
+begin / rescue / ensure
+================================================================================
+begin
+  risky()
+rescue TimeoutError => e
+  puts e
+rescue NetworkDown
+  reconnect()
+ensure
+  cleanup()
+end
+---
+
+(source_file
+  (statements
+    (begin_statement
+      (statements
+        (call
+          (identifier)))
+      (rescue_clause
+        (identifier)
+        (identifier)
+        (statements
+          (call
+            (identifier))))
+      (rescue_clause
+        (identifier)
+        (statements
+          (call
+            (identifier))))
+      (ensure_clause
+        (statements
+          (call
+            (identifier)))))))
+
+================================================================================
+function definitions with typed params
+================================================================================
+def clamp(x: Int, lo: Int, hi: Int) -> Int
+  return lo if x < lo
+  return hi if x > hi
+  x
+end
+---
+
+(source_file
+  (statements
+    (function_definition
+      (identifier)
+      (identifier)
+      (identifier)
+      (identifier)
+      (identifier)
+      (identifier)
+      (identifier)
+      (identifier)
+      (statements
+        (return_statement
+          (identifier))
+        (identifier)
+        (identifier)
+        (return_statement
+          (identifier))
+        (identifier)
+        (identifier)
+        (identifier)))))
+
+================================================================================
+import statement
+================================================================================
+import "lib/math" as math
+---
+
+(source_file
+  (statements
+    (import_statement
+      (string)
+      (identifier))))
