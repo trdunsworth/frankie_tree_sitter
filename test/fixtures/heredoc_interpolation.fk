@@ -1,0 +1,31 @@
+x = 7
+name = "world"
+plain = <<~A
+  just text
+A
+mid = <<~B
+  hello #{name}, x=#{x}
+B
+lead = <<~C
+  #{name} first
+C
+two = <<~D
+  #{x} and #{x}
+D
+tail = <<~E
+  ends with #{x}
+E
+literal = <<~F
+  # not an interpolation
+  end #
+  #hello world
+F
+escaped = <<~G
+  \#{x}
+G
+tricky = <<~MSG
+  text #{x} MSG
+MSG
+nested = <<~H
+  value #{ "a#{name}" } here
+H

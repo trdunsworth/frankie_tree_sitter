@@ -25,6 +25,9 @@ The grammar targets Frankie v1.22 syntax.
   text objects)
 - Heredoc interpolation: **complete** — `#{expr}` inside a `<<~DELIM` body
   parses as `(interpolation)`, verified against the reference compiler
+- WASM build: **complete** — `npm run build:wasm` produces
+  `tree-sitter-frankie.wasm`, and `npm run test:wasm` proves it emits the
+  same trees and query captures as the native parser
 
 ## Development
 
@@ -36,6 +39,8 @@ tree-sitter test -u      # regenerate expected trees after a grammar change
 npm run test:examples    # parse examples/*.fk, fail on any ERROR node
 tree-sitter parse examples/hello.fk
 tree-sitter highlight --html file.fk   # render highlighting (needs queries/ registered in tree-sitter.json)
+npm run build:wasm       # build tree-sitter-frankie.wasm — no emscripten
+npm run test:wasm        # build it, then check it against the native parser
 tree-sitter playground   # interactive playground (builds wasm)
 ```
 
@@ -223,15 +228,24 @@ Two options:
 
 1. **TextMate grammar** (simplest): convert or hand-write a
    `fk.tmLanguage.json` for the built-in tokenizer — no tree-sitter needed.
-2. **tree-sitter WASM** (full fidelity): install emscripten, then
+2. **tree-sitter WASM** (full fidelity):
 
    ```sh
-   tree-sitter build --wasm   # produces tree-sitter-frankie.wasm
+   npm run build:wasm   # → tree-sitter-frankie.wasm (~330 KB)
+   npm run test:wasm    # parse all 46 examples and diff the trees against
+                        # the native parser, then diff capture counts for
+                        # all four query files
    ```
 
-   and load it with a tree-sitter WASM host extension (e.g.
-   `tree-sitter-vscode`-style hosts), pointing `queries/highlights.scm` as
-   the highlight query.
+   Emscripten is **not** required: since CLI 0.27, `tree-sitter build
+   --wasm` fetches its own WASI-SDK clang and `wasm-opt` into
+   `~/.cache/tree-sitter/` on first use.
+
+   The module exports `tree_sitter_frankie` (ABI 15), loads under
+   `web-tree-sitter`, and is verified to produce byte-identical
+   S-expressions and identical query capture counts to the native parser.
+   Feed it to a tree-sitter WASM host extension (a `tree-sitter-vscode`
+   style host) together with `queries/highlights.scm`.
 
 ### Kakoune
 
