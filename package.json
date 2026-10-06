@@ -57,6 +57,7 @@
     "build:wasm": "tree-sitter build --wasm",
     "test": "tree-sitter test && node --test bindings/node/*_test.js",
     "test:examples": "bash scripts/check-examples.sh",
-    "test:wasm": "npm run build:wasm && node scripts/check-wasm.mjs"
+    "test:wasm": "npm run build:wasm && node scripts/check-wasm.mjs",
+    "test:vscode": "npm --prefix vscode test"
   }
 }

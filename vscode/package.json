@@ -1,0 +1,75 @@
+{
+  "name": "frankie",
+  "displayName": "Frankie",
+  "description": "Frankie language support: tree-sitter semantic highlighting driven by this repository's grammar, with a TextMate fallback",
+  "version": "0.1.0",
+  "publisher": "trdunsworth",
+  "license": "MIT",
+  "author": {
+    "name": "Tony Dunsworth",
+    "url": "https://drddatascience.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/trdunsworth/frankie_tree_sitter.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "frankie",
+    "tree-sitter",
+    "syntax"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onLanguage:frankie"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "frankie",
+        "aliases": [
+          "Frankie",
+          "frankie"
+        ],
+        "extensions": [
+          ".fk"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "frankie",
+        "scopeName": "source.frankie",
+        "path": "./syntaxes/fk.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Frankie",
+      "properties": {
+        "frankie.semanticHighlighting": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Highlight `.fk` files with the bundled tree-sitter grammar. Turn this off to fall back to the bundled TextMate grammar alone (for example to compare the two, or if the WebAssembly module fails to load)."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "web-tree-sitter": "^0.27.0"
+  },
+  "scripts": {
+    "assets": "bash ../scripts/build-vscode.sh",
+    "test": "node --test test/*.test.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
+  }
+}

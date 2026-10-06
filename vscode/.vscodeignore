@@ -1,0 +1,11 @@
+.vscode/**
+test/**
+.gitignore
+**/*.map
+node_modules/.bin/**
+node_modules/web-tree-sitter/debug/**
+node_modules/web-tree-sitter/*.d.ts
+node_modules/web-tree-sitter/*.d.ts.map
+node_modules/web-tree-sitter/*.d.cts
+node_modules/web-tree-sitter/*.d.cts.map
+node_modules/web-tree-sitter/README.md

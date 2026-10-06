@@ -1,0 +1,4 @@
+# Built by scripts/build-vscode.sh from the parent grammar, not sources.
+tree-sitter-frankie.wasm
+queries/highlights.scm
+*.vsix

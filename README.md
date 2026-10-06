@@ -28,6 +28,9 @@ The grammar targets Frankie v1.22 syntax.
 - WASM build: **complete** — `npm run build:wasm` produces
   `tree-sitter-frankie.wasm`, and `npm run test:wasm` proves it emits the
   same trees and query captures as the native parser
+- VS Code extension: **complete** — [`vscode/`](vscode/) packages a `.vsix`
+  with tree-sitter semantic highlighting and a TextMate fallback, both
+  tested headlessly against the real token and TextMate libraries
 
 ## Development
 
@@ -224,28 +227,32 @@ source when `treesit-language-source-alist` points at this repo.
 
 ### VS Code / Electron
 
-Two options:
+This repository ships an extension in [`vscode/`](vscode/). It registers the
+`frankie` language for `.fk`, highlights through a semantic token provider
+driven by `tree-sitter-frankie.wasm` + `queries/highlights.scm`, and falls
+back to a bundled TextMate grammar if the WebAssembly module is missing or
+fails to load.
 
-1. **TextMate grammar** (simplest): convert or hand-write a
-   `fk.tmLanguage.json` for the built-in tokenizer — no tree-sitter needed.
-2. **tree-sitter WASM** (full fidelity):
+```sh
+cd vscode
+npm run assets       # build the .wasm and copy it plus the query in here
+npm install
+npm test             # headless: token pipeline, TextMate grammar, activation
+npx @vscode/vsce package
+code --install-extension frankie-0.1.0.vsix
+```
 
-   ```sh
-   npm run build:wasm   # → tree-sitter-frankie.wasm (~330 KB)
-   npm run test:wasm    # parse all 46 examples and diff the trees against
-                        # the native parser, then diff capture counts for
-                        # all four query files
-   ```
+Emscripten is **not** required: since CLI 0.27, `tree-sitter build --wasm`
+fetches its own WASI-SDK clang and `wasm-opt` into `~/.cache/tree-sitter/`.
+The `.wasm` and copied query are git-ignored on both sides, so the extension
+cannot ship a stale copy of the grammar.
 
-   Emscripten is **not** required: since CLI 0.27, `tree-sitter build
-   --wasm` fetches its own WASI-SDK clang and `wasm-opt` into
-   `~/.cache/tree-sitter/` on first use.
+To build the module on its own, with no editor involved:
 
-   The module exports `tree_sitter_frankie` (ABI 15), loads under
-   `web-tree-sitter`, and is verified to produce byte-identical
-   S-expressions and identical query capture counts to the native parser.
-   Feed it to a tree-sitter WASM host extension (a `tree-sitter-vscode`
-   style host) together with `queries/highlights.scm`.
+```sh
+npm run build:wasm   # → tree-sitter-frankie.wasm
+npm run test:wasm    # diff its trees and query captures against native
+```
 
 ### Kakoune
 
