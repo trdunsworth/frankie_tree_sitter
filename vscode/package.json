@@ -66,9 +66,11 @@
   "scripts": {
     "assets": "bash ../scripts/build-vscode.sh",
     "test": "node --test test/*.test.js",
+    "test:integration": "node test/integration/run.js",
     "package": "vsce package"
   },
   "devDependencies": {
+    "@vscode/test-electron": "^3.1.0",
     "vscode-oniguruma": "^2.0.1",
     "vscode-textmate": "^9.3.2"
   }

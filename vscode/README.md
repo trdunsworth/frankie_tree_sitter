@@ -40,9 +40,10 @@ than failing the whole file.
 
 ```sh
 cd vscode
-npm run assets    # build the .wasm and copy it plus queries/highlights.scm here
+npm run assets              # build the .wasm and copy it plus queries/highlights.scm here
 npm install
-npm test          # headless tests, no VS Code required
+npm test                    # headless tests, no VS Code required
+npm run test:integration    # the same provider, launched inside a real VSCodium
 ```
 
 `npm run assets` shells out to `scripts/build-vscode.sh` in the parent
@@ -65,6 +66,26 @@ they can never drift from the grammar they were built from.
   stand-in for the VS Code API: the provider is registered, its output is a
   well-formed `Uint32Array`, the setting toggle falls back to TextMate, and a
   throwing document does not take the extension down.
+
+The `hello.fk` golden lives in `test/golden.js`, shared by the headless test
+and the integration test so the two can never drift.
+
+### Integration test
+
+```sh
+cd vscode
+npm run test:integration
+```
+
+Launches VSCodium with a temporary profile (the real one is never touched),
+opens `examples/hello.fk`, activates the extension and asks VS Code's own
+semantic token pipeline — `_provideDocumentSemanticTokensLegend` /
+`_provideDocumentSemanticTokens` — for the result, then asserts it decodes to
+exactly the shared golden, that the language id is `frankie`, and that flipping
+`frankie.semanticHighlighting` off hands the file back to TextMate.
+
+It is skipped, not failed, when VSCodium is not installed; set `VSCODIUM_PATH`
+to point at another build (VS Code itself works — it is the same codebase).
 
 ## Packaging
 

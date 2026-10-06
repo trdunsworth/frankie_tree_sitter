@@ -18,6 +18,7 @@ const {
   collectTokens,
   lineLengths,
 } = require('../src/tokens');
+const { HELLO_FK_TOKENS } = require('./golden');
 
 const EXT = path.join(__dirname, '..');
 const ROOT = path.join(EXT, '..');
@@ -109,17 +110,7 @@ test('hello.fk matches its expected tokens exactly', () => {
     ({ line, startChar, length, type, modifierBits }) =>
       [line, startChar, length, type, modifierBits],
   );
-  assert.deepEqual(shape, [
-    [0, 0, 49, 'comment', 0],
-    [2, 0, 4, 'variable', 0],
-    [2, 5, 1, 'operator', 0],
-    [2, 7, 7, 'string', 0],
-    [3, 0, 4, 'function', 2],
-    [3, 5, 17, 'string', 0],
-    [3, 15, 4, 'variable', 0],
-    [4, 0, 4, 'function', 2],
-    [4, 5, 67, 'string', 0],
-  ]);
+  assert.deepEqual(shape, HELLO_FK_TOKENS);
 });
 
 test('a node spanning lines is emitted once per line', () => {

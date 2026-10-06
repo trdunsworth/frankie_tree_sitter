@@ -30,7 +30,8 @@ The grammar targets Frankie v1.22 syntax.
   same trees and query captures as the native parser
 - VS Code extension: **complete** — [`vscode/`](vscode/) packages a `.vsix`
   with tree-sitter semantic highlighting and a TextMate fallback, both
-  tested headlessly against the real token and TextMate libraries
+  tested headlessly against the real token and TextMate libraries, plus an
+  in-editor test that runs the provider inside a real VSCodium
 
 ## Development
 
@@ -44,6 +45,8 @@ tree-sitter parse examples/hello.fk
 tree-sitter highlight --html file.fk   # render highlighting (needs queries/ registered in tree-sitter.json)
 npm run build:wasm       # build tree-sitter-frankie.wasm — no emscripten
 npm run test:wasm        # build it, then check it against the native parser
+npm run test:vscode      # headless VS Code extension tests (vscode/)
+npm run test:integration # the same provider, run inside a real VSCodium
 tree-sitter playground   # interactive playground (builds wasm)
 ```
 
