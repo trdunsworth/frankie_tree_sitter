@@ -302,3 +302,150 @@ import "lib/math" as math
     (import_statement
       (string)
       (identifier))))
+
+================================================================================
+empty block bodies are legal
+================================================================================
+def f()
+end
+
+if x
+end
+
+unless x
+end
+
+while x
+end
+
+for i in v
+end
+
+loop
+end
+
+begin
+end
+
+do
+while x < 5
+
+[1].each do |item|
+end
+
+f = ->(x) { }
+---
+
+(source_file
+  (statements
+    (function_definition
+      (identifier))
+    (if_statement
+      (identifier))
+    (unless_statement
+      (identifier))
+    (while_statement
+      (identifier))
+    (for_statement
+      (identifier)
+      (identifier))
+    (loop_statement)
+    (begin_statement)
+    (do_while_statement
+      (identifier)
+      (number))
+    (vector
+      (number))
+    (dot_call
+      (identifier))
+    (do_block
+      (identifier))
+    (assignment
+      (identifier)
+      (lambda
+        (identifier)))))
+
+================================================================================
+a body holding only a comment is empty
+================================================================================
+def f()
+  # nothing yet
+end
+
+if x
+  # TODO
+end
+
+case x
+when 1
+  # one
+else
+  # otherwise
+end
+
+begin
+  f()
+rescue e
+  # swallow
+ensure
+  # always
+end
+---
+
+(source_file
+  (statements
+    (function_definition
+      (identifier)
+      (comment))
+    (if_statement
+      (identifier)
+      (comment))
+    (case_statement
+      (identifier)
+      (when_clause
+        (number)
+        (comment))
+      (else_clause
+        (comment)))
+    (begin_statement
+      (statements
+        (call
+          (identifier)))
+      (rescue_clause
+        (identifier)
+        (comment))
+      (ensure_clause
+        (comment)))))
+
+================================================================================
+empty and non-empty bodies mix, and do-while still reads correctly
+================================================================================
+if a
+end
+
+if b
+  f()
+end
+
+loop do
+end
+
+loop do
+  g()
+end
+---
+
+(source_file
+  (statements
+    (if_statement
+      (identifier))
+    (if_statement
+      (identifier)
+      (statements
+        (call
+          (identifier))))
+    (loop_statement)
+    (loop_statement
+      (statements
+        (call
+          (identifier))))))

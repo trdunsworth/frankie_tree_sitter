@@ -16,7 +16,13 @@ The grammar targets Frankie v1.22 syntax.
 - P0 scaffold: complete (config, tests wiring, corpus)
 - P1 grammar: **complete** — all 46 files in `examples/` (harvested from
   upstream `atejada/Frankie`) parse with zero `ERROR`/`MISSING` nodes, and
-  the 29 unit tests in `test/corpus/` pass
+  the 32 unit tests in `test/corpus/` pass. Every construct is additionally
+  diffed against the upstream compiler's own `Lexer`/`Parser`, used as an
+  oracle
+- Empty block bodies: **complete** — `def f()\nend` and `if x\n  # TODO\nend`
+  parse the way the reference accepts them. An empty body has no
+  `(statements)` child, so there is nothing for `.inner` text objects to
+  select
 - P2 queries: **complete** — `queries/highlights.scm` and
   `queries/indents.scm`
 - P3 editor integration: query files are drop-in ready; see below
@@ -59,7 +65,15 @@ expressed with context-free rules alone:
   parses as a normal `(interpolation)` node
 
 The grammar declares GLR conflicts for the statement-level ambiguities
-(destructuring vs. comma lists, command vs. paren call, postfix control).
+(destructuring vs. comma lists, command vs. paren call, postfix control,
+do-while vs. a nested loop).
+
+`end`, `else`, `elsif`, `when`, `rescue`, `ensure` and `then` are listed in
+`reserved`, so they can never lex as identifiers. Tree-sitter's keyword
+extraction normally falls back to the `word` token — here `identifier` —
+whenever a keyword is not valid in the current lex state, which would let a
+stray `end` or a leading `else` parse as a clean expression statement instead
+of being flagged. The reference lexer has no such fallback.
 
 ## Queries
 
@@ -130,7 +144,13 @@ on open.
 - Block bodies are a visible `(statements)` node rather than being flattened
   into their construct. This is what makes `@function.inner` and friends
   work, and it keeps body expressions from being misread as part of a
-  signature.
+  signature. A body that is empty — or holds only comments — has no
+  `(statements)` node at all, so the `.inner` / `.inside` patterns simply do
+  not fire there rather than selecting an empty range.
+- Attribute assignment is accepted by the grammar but is **not** valid Frankie:
+  `cfg.theme = dark` is a parse error upstream, which allows only *index*
+  assignment (`v[0] = 5`, `h["a"] = 1`). Nothing in the shipped queries relies
+  on the attribute form.
 
 ## Ground truth
 
@@ -140,6 +160,35 @@ The language reference used while building the grammar:
 - `SPEC.md` (informal EBNF) and `compiler/lexer.py` / `compiler/parser.py`
   in [`atejada/Frankie`](https://github.com/atejada/Frankie)
 - `examples/*.fk` copied here as the parse corpus
+
+The upstream compiler is also usable as an executable oracle. Its `Lexer` and
+`Parser` accept/reject exactly what Frankie accepts/rejects, so a three-line
+harness turns "does this grammar match the language?" into a differential
+test:
+
+```python
+from compiler.lexer import Lexer
+from compiler.parser import Parser, ParseError
+
+def accepts(source: str) -> bool:
+    try:
+        Parser(Lexer(source).tokenize()).parse()
+    except (ParseError, LexError):
+        return False
+    return True
+```
+
+Run that against `tree-sitter parse` over the vendored `examples/`, and the
+docs' code blocks, and any disagreement is either a grammar gap or a doc
+error — both worth knowing. It is how the empty-body gap was found: the
+reference's `parse_body()` returns an empty list whenever a construct is
+closed immediately, and comments are `extras`, so a body holding nothing but
+a comment is empty too.
+
+Note that the upstream docs are not always a faithful oracle for the compiler
+— several pages show hash literals written `{"name" => "Alice"}`, which the
+compiler rejects with `Expected ':' in hash pair (got FAT_ARROW)`. Where the
+docs and `compiler/parser.py` disagree, the parser wins.
 
 ## Editor integration
 

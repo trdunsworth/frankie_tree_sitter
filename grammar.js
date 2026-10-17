@@ -32,6 +32,27 @@ export default grammar({
 
   word: $ => $.identifier,
 
+  // Words that structure a block may never be read as identifiers.  Without
+  // this, tree-sitter's keyword extraction falls back to `word` — here
+  // `identifier` — whenever the keyword is not valid in the current lex state,
+  // so a stray `end` or a leading `else` parses as a clean expression
+  // statement naming a variable instead of being flagged.  The reference
+  // lexer has no such fallback: every one of these is a dedicated token.
+  //
+  // This matters most where a construct can have an empty body — after
+  // `if x\nend` the next `end` is no longer an expected token, which is
+  // exactly the state in which the fallback used to kick in.
+  //
+  // Deliberately scoped to block structure.  The reference also reserves
+  // `p`, `times`, `each`, `map`, `input`, `spawn` and `timeout`; leaving
+  // those as identifiers is a divergence, but a harmless one that keeps
+  // ordinary code like `map = fn` parseable.
+  reserved: {
+    global: $ => [
+      'end', 'else', 'elsif', 'when', 'rescue', 'ensure', 'then',
+    ],
+  },
+
   externals: $ => [
     $._heredoc_start,
     $._heredoc_body,
@@ -64,9 +85,13 @@ export default grammar({
     // start a nested while-loop? GLR viability decides — a nested while
     // needs `end`, a do-while terminator does not.
     [$.statements],
-    // `loop do ...` — the `do` is the loop keyword's optional `do`, or the
-    // start of a do-while statement in the loop's body.
-    [$._separator, $.do_while_statement],
+    // Same question one token earlier, now that the body may be empty:
+    // `do while cond` reads as a do-while whose body is nothing at all, or as
+    // a nested while-loop statement in the body's first position. They share
+    // the whole prefix `do while <expr>`, so nothing up to the expression
+    // distinguishes them. A nested loop still needs its own `end` plus a
+    // closing `while` for the do-while, so viability resolves it.
+    [$.while_statement, $.do_while_statement],
     // `{ f a: 1 }` — `a: 1` as a named command argument (brace body) vs an
     // expression-keyed hash pair (hash literal).
     [$._primary, $._named_argument],
@@ -179,9 +204,40 @@ export default grammar({
       $.loop_statement,
     ),
 
-    // body of any block construct: statements, preceded by an optional
-    // separator (newline after the header, or `then`)
-    _body: $ => seq(optional($._separator), $.statements),
+    // Body of any block construct: an optional separator (the newline after
+    // the header, or `then`) and then statements.
+    //
+    // `statements` is optional because the reference's `parse_body()` returns
+    // an empty list whenever the construct is closed immediately — and since
+    // comments are `extras`, a body holding nothing but a comment is empty
+    // too.  So all of these are legal:
+    //
+    //     def f()
+    //     end
+    //     if x
+    //       # TODO
+    //     end
+    //     [1].each do |item|
+    //     end
+    //
+    // Keeping `statements` itself non-empty matters: it is a *visible* node,
+    // and `.inner` / `.inside` text objects select it.  Making the rule
+    // itself match the empty string would drop that node (and tree-sitter
+    // rejects empty-matching rules outright), so the optionality lives in
+    // `_body` instead — an empty body simply has no `(statements)` child,
+    // which is the honest answer: there is nothing to select.
+    //
+    // `_body` must not match the empty string either, so it has two non-empty
+    // arms — the statements, or the newlines standing in for them — and every
+    // call site wraps it in `optional()`.  That wrapper is what covers the
+    // zero-width case, `def f end` with no newline at all, which the
+    // reference accepts too.  Splitting it this way is also unambiguous: a
+    // statement can never begin with a newline, so whenever there IS a
+    // newline it has exactly one possible owner.
+    _body: $ => choice(
+      seq(optional($._separator), $.statements),
+      prec(1, $._terminator),
+    ),
     _separator: $ => choice($._terminator, seq('then', optional($._terminator))),
 
     _postfix_control: $ => seq(choice('if', 'unless'), $._expression),
@@ -189,48 +245,48 @@ export default grammar({
     // ── Statements ──────────────────────────────────────────────────────
 
     if_statement: $ => seq(
-      'if', $._expression, $._body,
+      'if', $._expression, optional($._body),
       repeat($.elsif_clause),
       optional($.else_clause),
       'end',
     ),
 
-    elsif_clause: $ => seq('elsif', $._expression, $._body),
+    elsif_clause: $ => seq('elsif', $._expression, optional($._body)),
 
-    else_clause: $ => seq('else', $._body),
+    else_clause: $ => seq('else', optional($._body)),
 
     unless_statement: $ => seq(
-      'unless', $._expression, $._body,
+      'unless', $._expression, optional($._body),
       optional($.else_clause),
       'end',
     ),
 
     while_statement: $ => choice(
-      prec.dynamic(1, seq('while', $._loop_label, $._expression, $._body, 'end')),
-      seq('while', $._expression, $._body, 'end'),
+      prec.dynamic(1, seq('while', $._loop_label, $._expression, optional($._body), 'end')),
+      seq('while', $._expression, optional($._body), 'end'),
     ),
 
     until_statement: $ => choice(
-      prec.dynamic(1, seq('until', $._loop_label, $._expression, $._body, 'end')),
-      seq('until', $._expression, $._body, 'end'),
+      prec.dynamic(1, seq('until', $._loop_label, $._expression, optional($._body), 'end')),
+      seq('until', $._expression, optional($._body), 'end'),
     ),
 
     for_statement: $ => seq(
       'for', optional($._loop_label), $.identifier, 'in',
-      $._expression, $._body, 'end',
+      $._expression, optional($._body), 'end',
     ),
 
     do_while_statement: $ => seq(
-      'do', optional($._terminator), $.statements, 'while', $._expression,
+      'do', optional($._body), 'while', $._expression,
     ),
 
     loop_statement: $ => seq(
       'loop', optional($._loop_label), optional('do'),
-      optional($._separator), $.statements, 'end',
+      optional($._body), 'end',
     ),
 
     begin_statement: $ => seq(
-      'begin', optional($._terminator), $.statements,
+      'begin', optional($._body),
       repeat($.rescue_clause),
       optional($.ensure_clause),
       'end',
@@ -245,10 +301,10 @@ export default grammar({
       'rescue',
       optional($.identifier),
       optional(choice(seq('=>', $.identifier), $.identifier)),
-      $._body,
+      optional($._body),
     )),
 
-    ensure_clause: $ => seq('ensure', $._body),
+    ensure_clause: $ => seq('ensure', optional($._body)),
 
     case_statement: $ => seq(
       'case', optional($._expression), optional($._separator),
@@ -258,7 +314,7 @@ export default grammar({
     ),
 
     when_clause: $ => seq(
-      'when', sep1($._expression, ','), $._body,
+      'when', sep1($._expression, ','), optional($._body),
     ),
 
     // `prec.dynamic(1)` on the parameter list is load-bearing.  Without it
@@ -272,7 +328,7 @@ export default grammar({
       'def', $.identifier,
       optional(prec.dynamic(1, seq('(', optional($._parameters), ')'))),
       optional(seq('->', $.identifier)),
-      $._body, 'end',
+      optional($._body), 'end',
     ),
 
     // The surrounding `(` `)` come from `function_definition`.
@@ -530,15 +586,13 @@ export default grammar({
 
     _lambda_parameter: $ => seq($.identifier, optional(seq('=', $._expression))),
 
-    _brace_body: $ => seq(
-      '{', optional($._separator), $.statements, '}',
-    ),
+    _brace_body: $ => seq('{', optional($._body), '}'),
 
     // `expr do ... end` blocks attached after a call / command / identifier
     do_block: $ => seq(
       'do',
       optional($._block_params),
-      $._body,
+      optional($._body),
       'end',
     ),
 
