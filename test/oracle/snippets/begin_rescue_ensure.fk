@@ -1,0 +1,7 @@
+begin
+  f()
+rescue e
+  puts e
+ensure
+  g()
+end

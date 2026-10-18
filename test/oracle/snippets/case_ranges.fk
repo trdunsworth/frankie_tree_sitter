@@ -1,0 +1,6 @@
+case s
+when 90..100
+  puts 1
+else
+  puts 2
+end

@@ -1,0 +1,1 @@
+posts = await http_get(u)

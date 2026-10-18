@@ -1,0 +1,5 @@
+[1].each do |x|
+  [10].each do |y|
+    puts x*y
+  end
+end

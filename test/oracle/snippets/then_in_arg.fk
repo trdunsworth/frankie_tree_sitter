@@ -1,0 +1,1 @@
+puts(if 0 then "t" else "f" end)

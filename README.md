@@ -11,12 +11,17 @@ editors.
 
 ## Status
 
-The grammar targets Frankie v1.22 syntax.
+The grammar targets Frankie v1.22 syntax. CI runs the whole local suite —
+corpus, WASM parity, examples, query compilation, plus a differential oracle
+against the upstream compiler over every fixture and every `.fk` in the
+upstream checkout
+([![CI](https://github.com/trdunsworth/frankie_tree_sitter/actions/workflows/ci.yml/badge.svg)](https://github.com/trdunsworth/frankie_tree_sitter/actions/workflows/ci.yml)).
+See `test/oracle/README.md`.
 
 - P0 scaffold: complete (config, tests wiring, corpus)
 - P1 grammar: **complete** — all 46 files in `examples/` (harvested from
   upstream `atejada/Frankie`) parse with zero `ERROR`/`MISSING` nodes, and
-  the 35 unit tests in `test/corpus/` pass. Every construct is additionally
+  the 36 unit tests in `test/corpus/` pass. Every construct is additionally
   diffed against the upstream compiler's own `Lexer`/`Parser`, used as an
   oracle — all 74 `.fk` files in the upstream repo parse identically
 - Empty block bodies: **complete** — `def f()\nend` and `if x\n  # TODO\nend`
@@ -190,7 +195,10 @@ The language reference used while building the grammar:
 - Upstream docs: <https://atejada.github.io/frankielanguage/site/>
 - `SPEC.md` (informal EBNF) and `compiler/lexer.py` / `compiler/parser.py`
   in [`atejada/Frankie`](https://github.com/atejada/Frankie)
-- `examples/*.fk` copied here as the parse corpus
+- `examples/*.fk` copied here as the parse corpus — the upstream repo is
+  GPL-3.0, so these 46 files sit here as test data only (see
+  `test/oracle/README.md` for why CI re-clones upstream instead of vendoring
+  more of it)
 
 The upstream compiler is also usable as an executable oracle. Its `Lexer` and
 `Parser` accept/reject exactly what Frankie accepts/rejects, so a three-line

@@ -1,0 +1,2 @@
+enum = 1
+puts enum

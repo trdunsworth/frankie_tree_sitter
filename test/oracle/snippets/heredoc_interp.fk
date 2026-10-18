@@ -1,0 +1,4 @@
+t = "x"
+q = <<~SQL
+  SELECT #{t}
+SQL

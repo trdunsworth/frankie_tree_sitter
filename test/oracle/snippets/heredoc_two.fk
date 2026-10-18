@@ -1,0 +1,6 @@
+a = <<~A
+  one
+A
+b = <<~B
+  two
+B

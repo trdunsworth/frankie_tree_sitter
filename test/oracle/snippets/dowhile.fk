@@ -1,0 +1,4 @@
+x = 10
+do
+  puts x
+while x < 5

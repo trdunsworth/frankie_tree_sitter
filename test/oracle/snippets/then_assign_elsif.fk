@@ -1,0 +1,1 @@
+g = if x then "A" elsif y then "B" else "C" end

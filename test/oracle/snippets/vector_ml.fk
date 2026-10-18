@@ -1,0 +1,4 @@
+people = [
+  Person("A"),
+  Person("B")
+]

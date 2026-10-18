@@ -1,0 +1,29 @@
+# Fixtures the two parsers are ALLOWED to disagree on, and why.
+#
+# Everything here is a deliberate, documented difference this repo accepts —
+# not a bug slipping through. Anything NOT listed must agree with the upstream
+# compiler, or scripts/oracle/run.py (and CI) fails. Keys are "<set>/<name>";
+# sets are snippets/, malformed/ and upstream/ (last one relative to the
+# upstream checkout). Every entry should keep its `#` reason column: it is the
+# human-readable contract for why the divergence is on purpose. When one of
+# these becomes a plain agreement after a grammar change, DELETE the entry —
+# the list must stay short.
+#
+# ── Constructs the reference REJECTS but this grammar accepts ──────────────
+snippets/attr_write.fk          # attribute assignment (cfg.theme = dark): accepted here, index assignment only upstream. README "Known limitations"
+snippets/def_nested_parens.fk   # nested parens in a def default: grammar relaxes past upstream's "no ( inside defaults"
+snippets/lambda_default.fk      # default in a lambda parameter list: grammar relaxes past upstream's reject
+snippets/or_alias.fk            # `a || b`: alias of `or` here; upstream has no || operator
+snippets/then_stmt_pos.fk       # `if x == 1 then "a" else "b" end`: the `then` separator variant accepted here
+snippets/then_case_when.fk      # `when 1 then ...`: same, in a case/when clause
+# ── Words the reference RESERVES that stay plain identifiers here ─────────
+# The reference lexes these as reserved words; this grammar deliberately does
+# not, because real programs write `p = "prompt"`, `times = 3`, `input = 5`
+# etc., and reserving them would break shipped code (README: reserved-word
+# rationale). WordPos = upstream reserves & grammar treats as identifier.
+snippets/kw_p_bare.fk           # `p` as identifier: reserved upstream, identifier here
+snippets/kw_times_ident.fk      # `times` as identifier: reserved upstream, identifier here
+snippets/kw_map_ident.fk        # `map` as identifier: reserved upstream, identifier here
+snippets/kw_input_assign.fk     # `input` as identifier: reserved upstream, identifier here
+snippets/kw_spawn_ident.fk      # `spawn` as identifier: reserved upstream, identifier here
+snippets/kw_timeout_ident.fk    # `timeout` as identifier: reserved upstream, identifier here

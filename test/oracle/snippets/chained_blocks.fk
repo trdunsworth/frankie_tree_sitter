@@ -1,0 +1,5 @@
+[1].select do |n|
+  n > 1
+end.each do |n|
+  puts n
+end

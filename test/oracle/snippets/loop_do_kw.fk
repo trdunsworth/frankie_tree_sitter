@@ -1,0 +1,3 @@
+loop do
+  f()
+end

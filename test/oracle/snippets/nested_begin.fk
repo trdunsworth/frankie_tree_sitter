@@ -1,0 +1,10 @@
+begin
+  begin
+    f()
+  rescue ValueError e
+    x = 1
+  end
+g()
+rescue RuntimeError e
+  y = 2
+end

@@ -46,3 +46,6 @@ zig-out/
 *.tgz
 *.zip
 *.jar
+
+# The differential oracle's reference checkout (scripts/oracle/setup-ref.sh)
+.oracle/

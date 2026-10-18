@@ -1,0 +1,58 @@
+# Every check the repo knows how to run locally runs here, in one job, so a
+# red step points at its own fix. Order: cheap and surgical first (generate
+# sync, corpus), the heavy compiler-differential oracle last — it shells out to
+# a fresh clone of the reference language.
+name: CI
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # grammar.js → src/parser.c, src/grammar.json, src/node-types.json must
+      # be regenerated and committed together; a stale parser fails here.
+      - name: Generated sources are in sync with grammar.js
+        run: |
+          npx tree-sitter generate
+          git diff --exit-code -- src/parser.c src/grammar.json src/node-types.json
+
+      - name: Corpus + node binding
+        run: npm test
+
+      # npm run test:wasm builds the wasm and compares capture counts between
+      # it and the native parser, so the two stay equivalent.
+      - name: WASM parity
+        run: npm run test:wasm
+
+      # Trials the tree itself (web-tree-sitter hasError), not
+      # `tree-sitter parse` text output: the latter hides a zero-width MISSING
+      # node for an external token (unterminated heredoc) AND exits 0.
+      - name: Examples parse clean
+        run: npm run test:examples
+
+      - name: Queries compile
+        run: npm run test:queries
+
+      # Differential oracle: this grammar vs the reference compiler, both run
+      # over every vendored construct/malformed fixture AND every .fk file in
+      # the pinned upstream checkout. Disagreements must be documented in
+      # test/oracle/allowlist.txt or the step fails.
+      - name: Differential oracle vs upstream Frankie v1.22.3
+        run: |
+          bash scripts/oracle/setup-ref.sh
+          npm run test:oracle

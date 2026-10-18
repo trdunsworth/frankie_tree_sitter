@@ -1,0 +1,6 @@
+case d
+when "Sat", "Sun"
+  puts 1
+else
+  puts 2
+end

@@ -1,0 +1,1 @@
+puts "a\nb\tc\\d\"e"

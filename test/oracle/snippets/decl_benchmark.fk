@@ -1,0 +1,3 @@
+benchmark "fib" do
+  fib(20)
+end

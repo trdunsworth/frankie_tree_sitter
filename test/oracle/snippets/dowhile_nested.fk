@@ -1,0 +1,5 @@
+do
+  do
+    f()
+  while a
+while b

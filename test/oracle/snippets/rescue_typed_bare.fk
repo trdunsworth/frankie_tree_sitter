@@ -1,0 +1,5 @@
+begin
+  f()
+rescue FileNotFoundError
+  puts 1
+end

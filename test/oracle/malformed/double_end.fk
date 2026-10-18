@@ -1,0 +1,4 @@
+if x
+  f()
+end
+end

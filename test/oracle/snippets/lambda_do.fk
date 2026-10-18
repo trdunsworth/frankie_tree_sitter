@@ -1,0 +1,4 @@
+c = ->(n, lo, hi) do
+  return lo if n < lo
+  n
+end
