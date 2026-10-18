@@ -173,6 +173,15 @@ on open.
   comes after more source the heredoc has already consumed) and `f((<<~A))`
   (both parens are deferred, which would leave both lists unclosed). Neither
   appears in upstream's own code.
+- An unterminated heredoc IS an error: the parse carves out a zero-width
+  `(heredoc_end (MISSING _heredoc_end))` node right at EOF, so
+  `hasError()` reports it — same as an unterminated `"string"`. It is easily
+  missed in CLI output, though: `tree-sitter parse` does not print the
+  MISSING annotation for an external token, and still exits 0, so
+  `grep ERROR|MISSING` over its stdout sees nothing. That was briefly
+  mis-reported as "unterminated heredocs are silently accepted" — they are
+  not; the tooling was looking in the wrong place. [`scripts/tree-status.mjs`](scripts/tree-status.mjs)
+  asks the tree instead, and `test:examples` now gates on it.
 
 ## Ground truth
 

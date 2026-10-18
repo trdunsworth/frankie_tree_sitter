@@ -245,3 +245,20 @@ A
           (heredoc_start)
           (heredoc_body)
           (heredoc_end))))))
+
+================================================================================
+unterminated heredoc produces a MISSING closer, not a silent eof
+================================================================================
+x = <<~A
+  body
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (heredoc
+        (heredoc_start)
+        (heredoc_body)
+        (heredoc_end
+          (MISSING _heredoc_end))))))
