@@ -98,15 +98,64 @@ function collectTokens(parser, query, text) {
         records.push({ ...rec, type, typeIndex: typeIdx, modifierBits: bits });
       }
     }
-    // The query walks the tree, not the file, so captures come back in parse
-    // order rather than position order; VS Code requires the latter.
-    records.sort(
-      (a, b) => a.line - b.line || a.startChar - b.startChar || a.length - b.length,
-    );
-    return records;
+    return resolveOverlaps(records);
   } finally {
     if (typeof tree.delete === 'function') tree.delete();
   }
+}
+
+/**
+ * Resolve overlapping semantic tokens.
+ *
+ * The query hands back every capture that matched, several of which end up
+ * over the same characters: the broad `(identifier) @variable` matches the
+ * node a later `@parameter`/`@keyword` pattern also matches, and code inside
+ * an interpolated string is captured inside the string's own capture.
+ * tree-sitter's highlighter keeps the LAST matching capture (its query order
+ * doubles as priority order); VS Code applies no such rule to overlapping
+ * semantic tokens and just renders a stack, so the overlap is resolved here:
+ *
+ *   * records are processed in capture order, and a record takes the range
+ *     it covers away from every record seen before it, whose span then keeps
+ *     only the characters the winner leaves untouched — an interpolated
+ *     string is split around its code rather than hiding it;
+ *   * an earlier record fully covered by the winner disappears (the generic
+ *     `@variable` duplicate of a specifically captured identifier);
+ *   * spans only TOUCH (end == neighbour's start) rather than overlap.
+ *
+ * The output is position-sorted and disjoint, as the semantic tokens API
+ * expects.
+ *
+ * @param {Array<{line: number, startChar: number, length: number}>} records
+ *   in capture (priority) order.
+ */
+function resolveOverlaps(records) {
+  const final = [];
+  for (const next of records) {
+    const nextEnd = next.startChar + next.length;
+    for (let i = final.length - 1; i >= 0; i--) {
+      const prev = final[i];
+      if (prev.line !== next.line) continue;
+      const prevEnd = prev.startChar + prev.length;
+      if (prevEnd <= next.startChar || prev.startChar >= nextEnd) continue;
+      final.splice(i, 1);
+      // The winner leaves the loser its outside-the-range leftovers.
+      if (prev.startChar < next.startChar) {
+        final.push({ ...prev, length: next.startChar - prev.startChar });
+      }
+      if (prevEnd > nextEnd) {
+        final.push({ ...prev, startChar: nextEnd, length: prevEnd - nextEnd });
+      }
+    }
+    final.push(next);
+  }
+  // Splitting an earlier record can scatter its fragments after later
+  // records in position order, so the final list is re-sorted.
+  final.sort(
+    (a, b) =>
+      a.line - b.line || a.startChar - b.startChar || a.length - b.length,
+  );
+  return final;
 }
 
 module.exports = {
@@ -118,4 +167,5 @@ module.exports = {
   lineLengths,
   recordsForNode,
   collectTokens,
+  resolveOverlaps,
 };

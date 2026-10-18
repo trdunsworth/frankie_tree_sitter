@@ -1,7 +1,8 @@
-# Every check the repo knows how to run locally runs here, in one job, so a
-# red step points at its own fix. Order: cheap and surgical first (generate
-# sync, corpus), the heavy compiler-differential oracle last — it shells out to
-# a fresh clone of the reference language.
+# Every check the repo knows how to run locally runs here, cheapest and
+# most surgical first (generate sync, corpus), the heavy compiler
+# differential oracle last — it shells out to a fresh clone of the
+# reference language. The VS Code extension runs as a second job that
+# replays its wasm/query assets and headless tests.
 name: CI
 on:
   push:
@@ -56,3 +57,27 @@ jobs:
         run: |
           bash scripts/oracle/setup-ref.sh
           npm run test:oracle
+
+  # The VS Code extension is tested headlessly (no VS Code download): tokens
+  # pipeline, TextMate grammar and the editor wiring with vscode mocked out.
+  # The heavy @vscode/test-electron integration suite stays a local
+  # `npm run test:integration` for now — it pulls a full editor build.
+  vscode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install (grammar + extension)
+        run: |
+          npm ci
+          npm ci --prefix vscode
+
+      - name: Build extension assets (wasm + highlight query)
+        run: bash scripts/build-vscode.sh
+
+      - name: Extension tests (headless)
+        run: npm --prefix vscode test

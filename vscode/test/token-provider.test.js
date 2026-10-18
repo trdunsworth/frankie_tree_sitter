@@ -68,14 +68,17 @@ function assertValid(records, text) {
     assert.ok(TOKEN_TYPES.includes(r.type), `type ${r.type} not in legend`);
     assert.equal(r.typeIndex, TOKEN_TYPES.indexOf(r.type));
     assert.equal(r.modifierBits & ~typeMask, 0, 'modifier bit outside legend');
+    // Tokens must be strictly disjoint as well as ordered: overlapping or
+    // stacked spans are undefined rendering in VS Code.
     assert.ok(r.line > previous.line
-      || (r.line === previous.line && r.startChar >= previous.startChar),
-    'records are not ordered by position');
+      || (r.line === previous.line
+        && r.startChar >= previous.startChar + previous.length),
+    `records overlap on line ${r.line} at ${r.startChar}`);
     previous = r;
   }
 }
 
-test('every example yields ordered, in-bounds tokens', () => {
+test('every example yields ordered, in-bounds, disjoint tokens', () => {
   const dir = path.join(ROOT, 'examples');
   const files = fs.readdirSync(dir).filter((f) => f.endsWith('.fk'));
   assert.ok(files.length >= 40, `expected the example corpus, found ${files.length}`);
@@ -85,18 +88,8 @@ test('every example yields ordered, in-bounds tokens', () => {
     const text = fs.readFileSync(path.join(dir, file), 'utf8');
     const records = collectTokens(parser, query, text);
     assertValid(records, text);
-
-    const tree = parser.parse(text);
-    let mapped = 0;
-    try {
-      mapped = query.captures(tree.rootNode).filter((c) => TOKEN_MAP[c.name]).length;
-    } finally {
-      tree.delete();
-    }
-    // Every mapped capture yields at least one record; multi-line nodes yield
-    // one per covered line, so this count can only grow.
-    assert.ok(records.length >= mapped,
-      `${file}: ${records.length} records for ${mapped} mapped captures`);
+    // Mapped captures can outnumber records: a capture duplicated by a
+    // later one on the same span is resolved away entirely.
     if (text.trim()) assert.ok(records.length > 0, `${file}: no tokens emitted`);
     total += records.length;
   }
@@ -129,4 +122,28 @@ test('the heredoc interpolation fixture tokenizes cleanly', () => {
   assertValid(records, text);
   assert.ok(records.some((r) => r.type === 'string'), 'expected string tokens');
   assert.ok(records.some((r) => r.type === 'variable'), 'expected interpolation tokens');
+});
+
+test('interpolated code wins its range from the surrounding string', () => {
+  // tree-sitter highlights apply the last matching capture per range, so the
+  // interpolation keeps its own colour and the string capture splits around
+  // it — resolveOverlaps does that resolution, because VS Code would render
+  // the two stacked tokens with undefined priority.
+  const text = 'x = "hi #{name} bye"\n';
+  const records = collectTokens(parser, query, text);
+  assertValid(records, text);
+
+  const nameStart = text.indexOf('name');
+  const stringParts = records.filter(
+    (r) => r.type === 'string' && r.line === 0
+  );
+  const nameParts = records.filter(
+    (r) => r.type === 'variable' && r.line === 0 && r.startChar === nameStart
+  );
+  assert.ok(stringParts.length >= 2, `expected the string split around the interpolation, got ${
+    records.filter((r) => r.line === 0).map((r) => `${r.type}@${r.startChar}+${r.length}`).join(', ')}`);
+  assert.deepEqual(
+    nameParts.map((r) => [r.startChar, r.length]),
+    [[nameStart, 4]],
+    'expected exactly the interpolated identifier as a variable token');
 });
