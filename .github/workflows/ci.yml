@@ -77,7 +77,7 @@ jobs:
           npm ci --prefix vscode
 
       - name: Build extension assets (wasm + highlight query)
-        run: bash scripts/build-vscode.sh
+        run: npm run assets:vscode
 
       - name: Extension tests (headless)
         run: npm --prefix vscode test

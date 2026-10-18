@@ -60,6 +60,7 @@
     "test:wasm": "npm run build:wasm && node scripts/check-wasm.mjs",
     "test:queries": "bash scripts/check-queries.sh",
     "test:oracle": "python3 scripts/oracle/run.py",
+    "assets:vscode": "bash scripts/build-vscode.sh",
     "test:vscode": "npm --prefix vscode test",
     "test:integration": "npm --prefix vscode run test:integration"
   }
