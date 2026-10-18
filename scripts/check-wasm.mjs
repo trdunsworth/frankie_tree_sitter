@@ -120,7 +120,7 @@ console.log(`heredoc fixture: ${found}/${expected} interpolations, ${fixtureErrs
 const sample = join(root, "examples/whats_new_v110.fk");
 const sampleSrc = readFileSync(sample, "utf8");
 const sampleTree = parser.parse(sampleSrc);
-for (const name of ["highlights", "indents", "locals", "textobjects"]) {
+for (const name of ["highlights", "indents", "locals", "textobjects", "folds"]) {
   const file = join(root, "queries", `${name}.scm`);
   let query;
   try {

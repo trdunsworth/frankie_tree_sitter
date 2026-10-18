@@ -97,8 +97,9 @@
 ; `const MAX = 3`
 (const_statement "const" . (identifier) @local.definition.constant)
 
-; `import io` / `import a.b as c`
+; `import io` / `import a.b as c` / `import "lib/math" as math`
 (import_statement "import" . (identifier) @local.definition.import)
+(import_statement "import" . (string) @local.definition.import)
 (import_statement "as" . (identifier) @local.definition.namespace)
 
 ; `for item in items` — the loop variable always sits directly before `in`,

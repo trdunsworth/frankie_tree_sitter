@@ -95,8 +95,18 @@ of being flagged. The reference lexer has no such fallback.
 |---|---|
 | `queries/highlights.scm` | syntax highlighting (Neovim, Helix, Zed, kak-tree-sitter, …) |
 | `queries/indents.scm` | auto-indentation (Neovim, Helix) |
+| `queries/folds.scm` | code folding (Neovim, Helix) |
 | `queries/locals.scm` | scopes, definitions and references — rename, "highlight usages" (Neovim) |
 | `queries/textobjects.scm` | text objects: function/class/loop/block/call/parameter/comment … (Neovim, Helix) |
+
+The grammar has no dedicated nodes for the contextual declarations `error
+Foo` and `enum Status(...)`: upstream handles both with statement-position
+identifier checks (`compiler/parser.py`), and this grammar models them as
+plain `call` nodes, so they accept/reject identically in the differential
+harness. `highlights.scm` recovers the keyword/type look with `#eq?`
+predicates on the callee text — `test`, `benchmark` and `breakpoint` are
+upstream stdlib *functions*, not keywords, and are highlighted
+`@function.builtin` the same way.
 
 `textobjects.scm` carries both `@function.outer`/`@function.around` style
 captures on the same node, so one file serves Neovim and Helix. Body
@@ -231,9 +241,9 @@ docs and `compiler/parser.py` disagree, the parser wins.
 
 ## Editor integration
 
-The grammar builds a C parser (`tree-sitter build`) and ships the four
-query files in `queries/`: `highlights.scm`, `indents.scm`, `locals.scm`
-and `textobjects.scm`.
+The grammar builds a C parser (`tree-sitter build`) and ships the five
+query files in `queries/`: `highlights.scm`, `indents.scm`, `folds.scm`,
+`locals.scm` and `textobjects.scm`.
 
 ### Neovim (0.10+)
 
