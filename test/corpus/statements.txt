@@ -449,3 +449,39 @@ end
       (statements
         (call
           (identifier))))))
+
+================================================================================
+def parameters may wrap after a comma
+================================================================================
+def game_new(width: 32, height: 20, fps: 30,
+                port: 4100, cell: 22)
+  width
+end
+
+def trailing(a,
+)
+  a
+end
+---
+
+(source_file
+  (statements
+    (function_definition
+      (identifier)
+      (identifier)
+      (number)
+      (identifier)
+      (number)
+      (identifier)
+      (number)
+      (identifier)
+      (number)
+      (identifier)
+      (number)
+      (statements
+        (identifier)))
+    (function_definition
+      (identifier)
+      (identifier)
+      (statements
+        (identifier)))))

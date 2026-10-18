@@ -158,6 +158,32 @@ export default grammar({
       $.heredoc_end,
     ),
 
+    // `html_response(<<~HTML)` — the reference lexer reads `<<~HTML`, then
+    // DEFERS whatever is left on the marker line until after the body: it
+    // emits the heredoc as one STRING token that swallows the `)`, and then
+    // re-emits RPAREN positioned at the closer line.  tree-sitter nodes are
+    // contiguous source ranges, so that reordering is not expressible — a
+    // token cannot follow a node that starts later in the file.
+    //
+    // The honest modelling is therefore that the tail belongs to the
+    // heredoc: `heredoc` spans `<<~HTML)` through the closer line, and the
+    // enclosing bracket is closed by that tail rather than by a token of its
+    // own.  `_paren_args` grows a second form for exactly that case, instead
+    // of making its `)` optional — an optional `)` would also let a
+    // genuinely unbalanced `f(1` parse as a complete call.
+    // Exactly ONE closer, not a run of them: `f((<<~A))` needs the inner
+    // paren list to take one `)` and the outer to take the other, which a
+    // `+` quantifier cannot express.
+    _marker_tail: $ => token(/[ \t]*[)\]}]/),
+
+    _heredoc_with_tail: $ => seq(
+      $.heredoc_start,
+      $._marker_tail,
+      $._newline,
+      repeat(choice($.heredoc_body, $.interpolation)),
+      $.heredoc_end,
+    ),
+
     // ── Statement structure ─────────────────────────────────────────────
 
     _terminator: $ => repeat1($._newline),
@@ -332,7 +358,25 @@ export default grammar({
     ),
 
     // The surrounding `(` `)` come from `function_definition`.
-    _parameters: $ => sep1($._parameter, ','),
+    //
+    // Newlines are allowed after a comma but nowhere else, mirroring
+    // `parse_func_def` in the reference parser, which does exactly one
+    // `skip_newlines()` — inside the `while self.match(TT.COMMA)` loop:
+    //
+    //     def game_new(width: 32, height: 20,      # OK
+    //                  port: 4100, cell: 22)
+    //     def f(a, b                                # OK
+    //            )                                  # not OK — no newline before `)`
+    //     def f(                                    # not OK — no newline after `(`
+    //       a)
+    //
+    // Lambda parameters are a separate rule (`_lambda_parameter`) and do NOT
+    // get this: `->(a,\n b)` is a parse error upstream.
+    _parameters: $ => prec.right(seq(
+      $._parameter,
+      repeat(seq(',', repeat($._newline), $._parameter)),
+      optional(seq(',', repeat($._newline))),
+    )),
 
     _parameter: $ => choice(
       prec.dynamic(1, seq($.identifier, ':', $.identifier, optional(seq('=', $._expression)))),
@@ -515,15 +559,28 @@ export default grammar({
     // expression, so this is a single-line form only.
     _parenthesized: $ => seq('(', $._expression, ')'),
 
-    vector: $ => seq(
-      '[',
-      repeat($._newline),
-      optional(seq(
-        sep1($._expression, seq(',', repeat($._newline))),
-        optional(seq(',', repeat($._newline))),
+    vector: $ => choice(
+      seq(
+        '[',
         repeat($._newline),
-      )),
-      ']',
+        optional(seq(
+          sep1($._expression, seq(',', repeat($._newline))),
+          optional(seq(',', repeat($._newline))),
+          repeat($._newline),
+        )),
+        ']',
+      ),
+      // A trailing heredoc closes the list, same as `_paren_args`.
+      seq(
+        '[',
+        repeat($._newline),
+        optional(seq(
+          sep1($._expression, seq(',', repeat($._newline))),
+          ',',
+          repeat($._newline),
+        )),
+        alias($._heredoc_with_tail, $.heredoc),
+      ),
     ),
 
     hash: $ => seq(
@@ -565,15 +622,31 @@ export default grammar({
 
     _named_argument: $ => seq($.identifier, ':', $._expression),
 
-    _paren_args: $ => seq(
-      '(',
-      repeat($._newline),
-      optional(seq(
-        sep1($._argument, seq(',', repeat($._newline))),
-        optional(seq(',', repeat($._newline))),
+    _paren_args: $ => choice(
+      seq(
+        '(',
         repeat($._newline),
-      )),
-      ')',
+        optional(seq(
+          sep1($._argument, seq(',', repeat($._newline))),
+          optional(seq(',', repeat($._newline))),
+          repeat($._newline),
+        )),
+        ')',
+      ),
+      // ...and the `heredoc`-closes-the-list form, where the final argument
+      // is a heredoc that already absorbed the `)`.  Aliased back to
+      // `heredoc` so this stays invisible in the tree: consumers see one
+      // `(heredoc)` node either way, only its span differs.
+      seq(
+        '(',
+        repeat($._newline),
+        optional(seq(
+          sep1($._argument, seq(',', repeat($._newline))),
+          ',',
+          repeat($._newline),
+        )),
+        alias($._heredoc_with_tail, $.heredoc),
+      ),
     ),
 
     // `->(x) { ... }` / `->(x) do ... end`

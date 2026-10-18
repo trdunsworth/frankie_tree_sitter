@@ -201,3 +201,47 @@ MSG
           (identifier))
         (heredoc_body)
         (heredoc_end)))))
+
+================================================================================
+heredoc as a call argument absorbs the closing paren
+================================================================================
+app.get("/") do |req|
+  html_response(<<~HTML)
+    <h1>hi</h1>
+  HTML
+end
+---
+
+(source_file
+  (statements
+    (identifier)
+    (dot_call
+      (identifier)
+      (string))
+    (do_block
+      (identifier)
+      (statements
+        (call
+          (identifier)
+          (heredoc
+            (heredoc_start)
+            (heredoc_body)
+            (heredoc_end)))))))
+
+================================================================================
+heredoc closes a vector literal the same way
+================================================================================
+v = [<<~A]
+  one
+A
+---
+
+(source_file
+  (statements
+    (assignment
+      (identifier)
+      (vector
+        (heredoc
+          (heredoc_start)
+          (heredoc_body)
+          (heredoc_end))))))

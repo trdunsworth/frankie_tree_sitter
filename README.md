@@ -16,13 +16,17 @@ The grammar targets Frankie v1.22 syntax.
 - P0 scaffold: complete (config, tests wiring, corpus)
 - P1 grammar: **complete** — all 46 files in `examples/` (harvested from
   upstream `atejada/Frankie`) parse with zero `ERROR`/`MISSING` nodes, and
-  the 32 unit tests in `test/corpus/` pass. Every construct is additionally
+  the 35 unit tests in `test/corpus/` pass. Every construct is additionally
   diffed against the upstream compiler's own `Lexer`/`Parser`, used as an
-  oracle
+  oracle — all 74 `.fk` files in the upstream repo parse identically
 - Empty block bodies: **complete** — `def f()\nend` and `if x\n  # TODO\nend`
   parse the way the reference accepts them. An empty body has no
   `(statements)` child, so there is nothing for `.inner` text objects to
   select
+- Multi-line `def` parameter lists: **complete** — newlines are allowed after
+  a comma, and nowhere else, matching `parse_func_def`
+- Heredoc arguments: **complete** — `html_response(<<~HTML)` parses, with the
+  marker line's closing bracket absorbed into the `(heredoc)` node
 - P2 queries: **complete** — `queries/highlights.scm` and
   `queries/indents.scm`
 - P3 editor integration: query files are drop-in ready; see below
@@ -67,6 +71,11 @@ expressed with context-free rules alone:
 The grammar declares GLR conflicts for the statement-level ambiguities
 (destructuring vs. comma lists, command vs. paren call, postfix control,
 do-while vs. a nested loop).
+
+`_parameters` allows a newline after a comma but not after `(` or before `)`,
+mirroring the reference's single `skip_newlines()` inside its
+`while self.match(TT.COMMA)` loop. Lambda parameters are a separate rule and
+deliberately do *not* get this — `->(a,\n b)` is a parse error upstream.
 
 `end`, `else`, `elsif`, `when`, `rescue`, `ensure` and `then` are listed in
 `reserved`, so they can never lex as identifiers. Tree-sitter's keyword
@@ -151,6 +160,19 @@ on open.
   `cfg.theme = dark` is a parse error upstream, which allows only *index*
   assignment (`v[0] = 5`, `h["a"] = 1`). Nothing in the shipped queries relies
   on the attribute form.
+- A heredoc marker line may close the list it appears in — `f(<<~A)`,
+  `f(1, <<~A)`, `v = [<<~A]` — because the reference lexer *defers* the
+  marker line's closing bracket until after the body. tree-sitter nodes are
+  contiguous ranges, so it cannot emit that bracket afterwards; instead the
+  bracket is absorbed into the `(heredoc)` node, which therefore spans
+  `<<~A)` through the closer line. Consumers still see one plain `(heredoc)`
+  node with the usual `(heredoc_start)`/`(heredoc_body)`/`(heredoc_end)`
+  children — only its span reaches past the marker. Two shapes the reference
+  accepts remain unsupported, because the deferral they need is not
+  expressible: `f(<<~A, 2)` (the heredoc is not the last argument, so the `)`
+  comes after more source the heredoc has already consumed) and `f((<<~A))`
+  (both parens are deferred, which would leave both lists unclosed). Neither
+  appears in upstream's own code.
 
 ## Ground truth
 
